@@ -1,0 +1,369 @@
+<div class="orrery-app">
+<style>
+.orrery-app *{box-sizing:border-box;margin:0;padding:0}
+.orrery-app{
+  --vellum:#ece2cb;--vellum2:#e3d7bb;--ink:#2a2418;--ink-soft:#5c5240;
+  --rule:#bfa86f;--rule-soft:#d8c79a;--gold:#9a7b2e;--crimson:#7c3a2c;--night:#1d1b2c;
+  --serif:'Iowan Old Style','Palatino Linotype',Palatino,'Book Antiqua',Georgia,serif;
+  --sans:'Trebuchet MS','Segoe UI',system-ui,sans-serif;
+  background:
+    radial-gradient(circle at 18% 10%, #f3ead4 0%, transparent 42%),
+    radial-gradient(circle at 86% 90%, #e6d9ba 0%, transparent 46%),
+    linear-gradient(160deg,#ece2cb,#ddcfac);
+  color:var(--ink);font-family:var(--serif);
+  padding:clamp(20px,3vw,40px);border:1px solid var(--rule);position:relative;overflow:hidden;
+}
+.orrery-app::after{content:"";position:absolute;inset:0;pointer-events:none;
+  box-shadow:inset 0 0 90px rgba(90,70,30,.20);border:6px double var(--rule);margin:9px}
+.oa-head{text-align:center;position:relative;z-index:2;margin-bottom:18px}
+.oa-eyebrow{font-family:var(--sans);font-size:10.5px;letter-spacing:.4em;text-transform:uppercase;
+  color:var(--gold);margin-bottom:10px}
+.oa-title{font-size:clamp(26px,5vw,42px);font-weight:400;line-height:1}
+.oa-title em{font-style:italic;color:var(--crimson)}
+
+.oa-main{position:relative;z-index:2;display:grid;grid-template-columns:1fr 280px;gap:24px;
+  align-items:start}
+@media (max-width:760px){.oa-main{grid-template-columns:1fr}}
+
+/* wheel */
+.oa-wheel-wrap{position:relative;display:flex;justify-content:center}
+.oa-wheel{width:100%;max-width:540px;aspect-ratio:1;position:relative}
+.oa-wheel svg{width:100%;height:100%;overflow:visible;display:block}
+.ring{fill:none;stroke:var(--rule);stroke-width:.8;opacity:.55}
+.ring-up-arc{fill:none;stroke-width:3.5;stroke-linecap:round;opacity:.30}
+.daymark{stroke:var(--crimson);stroke-width:1.4;opacity:.85}
+.daymark-dot{fill:var(--crimson)}
+.sun{fill:url(#sun)}
+.sun-halo{fill:url(#halo)}
+.moon-body{cursor:pointer;transition:r .18s,opacity .25s}
+.moon-body.aloft{filter:drop-shadow(0 0 5px currentColor)}
+.moon-body.below{opacity:.22}
+.moon-hit{cursor:pointer;fill:transparent}
+.moon-glyph{pointer-events:none;transition:opacity .25s}
+.moon-glyph.below{opacity:.25}
+.conv-ray{stroke:var(--gold);stroke-width:1;opacity:.5;stroke-dasharray:3 4}
+.conv-lbl{font-family:var(--sans);font-size:8.5px;fill:var(--gold);letter-spacing:.1em;text-transform:uppercase}
+
+/* side panel */
+.oa-panel{background:rgba(255,252,244,.5);border:1px solid var(--rule);border-radius:3px;
+  padding:18px;min-height:340px;position:relative}
+.oa-date{text-align:center;border-bottom:1px solid var(--rule-soft);padding-bottom:14px;margin-bottom:14px}
+.oa-date-dom{font-size:34px;line-height:1;font-style:italic}
+.oa-date-mo{font-family:var(--sans);font-size:11px;letter-spacing:.18em;text-transform:uppercase;
+  color:var(--gold);margin-top:6px}
+.oa-date-wd{font-family:var(--sans);font-size:10px;color:var(--ink-soft);margin-top:4px;letter-spacing:.04em}
+.oa-event{font-family:var(--sans);font-size:10.5px;text-align:center;margin:10px 0 4px;
+  padding:6px 8px;border-radius:2px;letter-spacing:.05em;line-height:1.4}
+.oa-event.conv{background:rgba(154,123,46,.18);color:var(--gold);border:1px solid var(--rule)}
+.oa-event.vanish{background:rgba(29,27,44,.12);color:var(--night);border:1px solid var(--ink-soft)}
+.oa-event.tears{background:rgba(124,58,44,.12);color:var(--crimson);border:1px solid var(--crimson)}
+.oa-aloft-h{font-family:var(--sans);font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--ink-soft);margin-bottom:8px}
+.oa-aloft-list{display:flex;flex-direction:column;gap:6px}
+.oa-aloft-row{display:flex;align-items:center;gap:9px;cursor:pointer;padding:4px 6px;border-radius:2px;
+  transition:background .15s}
+.oa-aloft-row:hover{background:rgba(191,168,111,.18)}
+.oa-aloft-row svg{width:20px;height:20px;flex:none}
+.oa-aloft-name{font-size:13px}
+.oa-aloft-god{font-family:var(--sans);font-size:9px;color:var(--ink-soft);margin-left:auto}
+.oa-none{font-family:var(--sans);font-size:11px;color:var(--ink-soft);font-style:italic;text-align:center;
+  padding:14px 0}
+
+/* detail card overlay */
+.oa-detail{position:absolute;inset:0;background:linear-gradient(160deg,#f3ead4,#e6d9ba);
+  border-radius:3px;padding:18px;display:none;flex-direction:column;z-index:5}
+.oa-detail.show{display:flex}
+.oa-detail-top{display:flex;align-items:center;gap:12px;margin-bottom:12px;
+  border-bottom:1px solid var(--rule-soft);padding-bottom:12px}
+.oa-detail-top svg{width:42px;height:42px;flex:none}
+.oa-detail-name{font-size:22px}
+.oa-detail-god{font-family:var(--sans);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--gold);margin-top:2px}
+.oa-detail-body{font-family:var(--sans);font-size:11.5px;line-height:1.65;color:var(--ink-soft);
+  overflow-y:auto;flex:1}
+.oa-detail-body b{color:var(--ink)}
+.oa-detail-stats{display:grid;grid-template-columns:1fr 1fr;gap:6px 12px;margin:10px 0;
+  font-family:var(--sans);font-size:10.5px}
+.oa-detail-stats div{border-bottom:1px dotted var(--rule-soft);padding:3px 0}
+.oa-detail-close{position:absolute;top:12px;right:14px;font-family:var(--sans);font-size:18px;
+  color:var(--ink-soft);cursor:pointer;line-height:1;border:none;background:none}
+.oa-detail-close:hover{color:var(--crimson)}
+
+/* controls */
+.oa-controls{position:relative;z-index:2;margin-top:22px;background:rgba(255,252,244,.4);
+  border:1px solid var(--rule);border-radius:3px;padding:16px 20px}
+.oa-scrub-row{display:flex;align-items:center;gap:14px}
+.oa-play{font-family:var(--sans);font-size:12px;letter-spacing:.06em;background:var(--ink);
+  color:var(--vellum);border:none;border-radius:2px;padding:8px 16px;cursor:pointer;flex:none;
+  text-transform:uppercase;transition:background .15s}
+.oa-play:hover{background:var(--crimson)}
+.oa-slider{flex:1;-webkit-appearance:none;appearance:none;height:5px;border-radius:3px;
+  background:linear-gradient(90deg,var(--rule) 0%,var(--rule-soft) 100%);outline:none}
+.oa-slider::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;border-radius:50%;
+  background:var(--crimson);cursor:pointer;border:2px solid var(--vellum);box-shadow:0 1px 3px rgba(0,0,0,.3)}
+.oa-slider::-moz-range-thumb{width:18px;height:18px;border-radius:50%;background:var(--crimson);
+  cursor:pointer;border:2px solid var(--vellum)}
+.oa-daynum{font-family:var(--sans);font-size:11px;color:var(--ink-soft);flex:none;width:88px;text-align:right}
+/* month ticks */
+.oa-ticks{display:grid;grid-template-columns:repeat(13,1fr);margin-top:10px;gap:0}
+.oa-tick{font-family:var(--sans);font-size:7.5px;text-align:center;color:var(--ink-soft);
+  text-transform:uppercase;letter-spacing:.02em;cursor:pointer;padding:3px 0;border-left:1px solid var(--rule-soft)}
+.oa-tick:first-child{border-left:none}
+.oa-tick:hover{color:var(--crimson)}
+.oa-tick.special{color:var(--gold);font-weight:700}
+.oa-legend{font-family:var(--sans);font-size:10px;color:var(--ink-soft);text-align:center;margin-top:14px;
+  letter-spacing:.03em}
+.oa-foot{position:relative;z-index:2;text-align:center;font-family:var(--sans);font-size:9.5px;
+  letter-spacing:.18em;text-transform:uppercase;color:var(--gold);margin-top:18px}
+</style>
+
+<div class="oa-head">
+  <div class="oa-eyebrow">The Seven-Lit Sky · An Orrery of Lumira</div>
+  <h1 class="oa-title">The Wheel of <em>Seven Moons</em></h1>
+</div>
+
+<div class="oa-main">
+  <div class="oa-wheel-wrap">
+    <div class="oa-wheel">
+      <svg viewBox="-300 -300 600 600" id="oaSvg">
+        <defs>
+          <radialGradient id="sun" cx="38%" cy="34%" r="70%">
+            <stop offset="0%" stop-color="#fff4d6"/><stop offset="48%" stop-color="#e9b94e"/>
+            <stop offset="100%" stop-color="#b5832a"/>
+          </radialGradient>
+          <radialGradient id="halo" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stop-color="rgba(233,185,78,.4)"/>
+            <stop offset="100%" stop-color="rgba(233,185,78,0)"/>
+          </radialGradient>
+        </defs>
+        <circle class="sun-halo" r="60"></circle>
+        <g id="oaRings"></g>
+        <g id="oaDaymark"></g>
+        <circle class="sun" r="22"></circle>
+        <g id="oaMoons"></g>
+      </svg>
+    </div>
+  </div>
+
+  <div class="oa-panel" id="oaPanel">
+    <div class="oa-date">
+      <div class="oa-date-dom" id="oaDom">1</div>
+      <div class="oa-date-mo" id="oaMo">Dawnmoot</div>
+      <div class="oa-date-wd" id="oaWd">Lundia</div>
+    </div>
+    <div id="oaEventSlot"></div>
+    <div class="oa-aloft-h">Moons Aloft</div>
+    <div class="oa-aloft-list" id="oaAloft"></div>
+
+    <div class="oa-detail" id="oaDetail">
+      <button class="oa-detail-close" id="oaClose">✕</button>
+      <div class="oa-detail-top">
+        <span id="oaDetailGlyph"></span>
+        <div><div class="oa-detail-name" id="oaDetailName"></div>
+        <div class="oa-detail-god" id="oaDetailGod"></div></div>
+      </div>
+      <div class="oa-detail-body" id="oaDetailBody"></div>
+    </div>
+  </div>
+</div>
+
+<div class="oa-controls">
+  <div class="oa-scrub-row">
+    <button class="oa-play" id="oaPlay">▶ Play</button>
+    <input type="range" class="oa-slider" id="oaSlider" min="0" max="363" value="0">
+    <span class="oa-daynum" id="oaDayNum">Day 1 / 364</span>
+  </div>
+  <div class="oa-ticks" id="oaTicks"></div>
+  <div class="oa-legend">Drag the slider or press Play to move through the year · click any moon to learn about it</div>
+</div>
+
+<div class="oa-foot">Charted at the Grand Temple of Bespalon · 7th Cycle</div>
+
+<script>
+(function(){
+  var app=document.querySelector('.orrery-app');
+  var YEAR=364;
+  var months=["Dawnmoot","Risenel","Cindreth","Veylune","Harvenmar","Highmoot","Sorrowane","Wanetide","Ashlen","Mordhal","Greymire","Vael'sere","Convane"];
+  var weekdays=["Lundia","Veydia","Serdia","Ordia","Nocdia","Eldia","Vaeldia"];
+  // outer(slow) -> inner(fast)
+  var moons=[
+    {key:"Serathis",god:"Heindr",col:"#8a8a82",p:364,up:7,off:357,
+     glyph:'<circle cx="32" cy="32" r="20" fill="none" stroke="currentColor" stroke-width="4"/><path d="M32 12 L32 52 M22 18 Q34 32 26 50 M42 18 Q30 34 40 50" fill="none" stroke="currentColor" stroke-width="2.6" opacity=".7"/>',
+     desc:"<b>The Third Moon · The Dead Moon.</b> Rarest of the seven, aloft just 7 nights a year. Tidally locked, showing one unchanging death-mask face \u2014 proof, many say, that the goddess Heindr is truly gone. Rises alone from the Vanishing to open the Week of Tears, the continent\u2019s great mourning, before joining her sisters at the Convocation."},
+    {key:"Eldamar",god:"Albiren",col:"#b56a86",p:182,up:100,off:181,
+     glyph:'<circle cx="32" cy="32" r="19" fill="none" stroke="currentColor" stroke-width="4"/><path d="M32 13 L23 32 L32 51 L41 32 Z" fill="none" stroke="currentColor" stroke-width="3"/><path d="M23 32 L41 32" stroke="currentColor" stroke-width="2.2" opacity=".7"/>',
+     desc:"<b>The Sixth Moon · The Beautiful.</b> Largest moon in the sky, opalescent and bright enough to cast shadows at midnight. Vain Albiren\u2019s moon prefers solitude \u2014 it spends more nights alone than any other, reigning without rival. Sits full at Highsun, the festival of beauty and grand weddings."},
+    {key:"Veyloria",god:"Forlin",col:"#4a6fa5",p:91,up:40,off:90,
+     glyph:'<path d="M40 14 A20 20 0 1 0 40 50 A15 15 0 1 1 40 14 Z" fill="none" stroke="currentColor" stroke-width="4"/><circle cx="30" cy="32" r="4.5" fill="none" stroke="currentColor" stroke-width="2.8"/>',
+     desc:"<b>The Second Moon · The Scholar.</b> A cold blue-white crescent whose surface is etched with fine grooves like script; Forlin\u2019s reclusive followers read its turning face for meaning. Its brightest season falls in the month Veylune, the scholars\u2019 high holy time."},
+    {key:"Orthemar",god:"Neksron",col:"#7a7032",p:52,up:24,off:51,
+     glyph:'<path d="M38 15 A19 19 0 1 0 38 49 A14 14 0 1 1 38 15 Z" fill="none" stroke="currentColor" stroke-width="4" transform="rotate(20 32 32)"/><path d="M26 15 A19 19 0 1 1 26 49 A14 14 0 1 0 26 15 Z" fill="none" stroke="currentColor" stroke-width="2.8" opacity=".6" transform="rotate(-20 32 32)"/>',
+     desc:"<b>The Fourth Moon · The Trickster.</b> A mottled moon that tumbles rather than turns, its blotched face never settling. Neksron\u2019s moon governs markets, fairs and chance; folk say a plan begun under Orthemar ends with a twist no one foresaw."},
+    {key:"Lunareth",god:"Quryt",col:"#b08d3c",p:28,up:18,off:27,
+     glyph:'<circle cx="32" cy="32" r="19" fill="none" stroke="currentColor" stroke-width="4"/><circle cx="32" cy="32" r="4" fill="currentColor"/><path d="M32 13 L32 18 M32 46 L32 51 M13 32 L18 32 M46 32 L51 32" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>',
+     desc:"<b>The First Moon · The Timekeeper.</b> The constant silver moon whose 28-day circuit defines the month itself \u2014 thirteen turns to a year. Tidally locked and unchanging, the standard all other moons are measured against, fitting the eldest goddess Quryt\u2019s claim of primacy. Moon of oaths and beginnings."},
+    {key:"Noctyrae",god:"Mordaniac",col:"#9e3b2e",p:26,up:10,off:25,
+     glyph:'<path d="M42 14 A20 20 0 1 0 42 50 A15 15 0 1 1 42 14 Z" fill="none" stroke="currentColor" stroke-width="4"/><path d="M20 44 L46 18" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>',
+     desc:"<b>The Fifth Moon · The War Moon.</b> Iron-red and hard-edged, its rotating face scarred like a battered shield. Mordaniac\u2019s moon marks drills, duels and judgement; a daytime Noctyrae is read as an omen of coming war, and summer raids are \u2018settled before the watch turns.\u2019"},
+    {key:"Vael'thera",god:"Tanksil",col:"#3f8296",p:14,up:5,off:13,
+     glyph:'<path d="M40 15 A19 19 0 1 0 40 49 A14 14 0 1 1 40 15 Z" fill="none" stroke="currentColor" stroke-width="4"/><path d="M30 32 L20 22 M30 32 L20 42 M30 32 L17 32" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" opacity=".85"/>',
+     desc:"<b>The Seventh Moon · The Wanderer.</b> Smallest and swiftest, never holding still \u2014 26 circuits a year, almost never alone in the sky. Ever-changing in colour with the seasons. The youngest god Tanksil is said to ride it down to the world in mortal form, so a stranger on a Vael\u2019thera night is met with wary courtesy."}
+  ];
+  function isUp(m,d){return ((d-m.off)%m.p+m.p)%m.p < m.up;}
+
+  var rMin=58,rMax=262;
+  moons.forEach(function(m,i){m._r=rMin+(rMax-rMin)*(i/(moons.length-1));
+    m._up=0;for(var d=0;d<YEAR;d++)if(isUp(m,d))m._up++;
+    m._solo=0;for(var d2=0;d2<YEAR;d2++){if(isUp(m,d2)&&moons.filter(function(x){return isUp(x,d2)}).length===1)m._solo++;}
+    m._turns=Math.round(YEAR/m.p);
+  });
+
+  // build rings + faint up-arcs
+  var ringsG=app.querySelector('#oaRings');
+  function ang(day){return (day/YEAR)*2*Math.PI - Math.PI/2;} // day0 at top
+  moons.forEach(function(m){
+    var c=document.createElementNS('http://www.w3.org/2000/svg','circle');
+    c.setAttribute('class','ring');c.setAttribute('r',m._r);ringsG.appendChild(c);
+    // faint arcs where it's aloft
+    var win=[],s=null;
+    for(var d=0;d<YEAR;d++){if(isUp(m,d)&&s===null)s=d;if(!isUp(m,d)&&s!==null){win.push([s,d-1]);s=null;}}
+    if(s!==null)win.push([s,YEAR-1]);
+    win.forEach(function(w){
+      var a0=ang(w[0]),a1=ang(w[1]+1),large=(a1-a0)>Math.PI?1:0;
+      var x0=Math.cos(a0)*m._r,y0=Math.sin(a0)*m._r,x1=Math.cos(a1)*m._r,y1=Math.sin(a1)*m._r;
+      var p=document.createElementNS('http://www.w3.org/2000/svg','path');
+      p.setAttribute('class','ring-up-arc');p.setAttribute('stroke',m.col);
+      p.setAttribute('d','M '+x0.toFixed(2)+' '+y0.toFixed(2)+' A '+m._r+' '+m._r+' 0 '+large+' 1 '+x1.toFixed(2)+' '+y1.toFixed(2));
+      ringsG.appendChild(p);
+    });
+  });
+  // convergence ray at top
+  var ray=document.createElementNS('http://www.w3.org/2000/svg','line');
+  ray.setAttribute('class','conv-ray');ray.setAttribute('x1',0);ray.setAttribute('y1',-44);
+  ray.setAttribute('x2',0);ray.setAttribute('y2',-rMax-8);ringsG.appendChild(ray);
+  var rl=document.createElementNS('http://www.w3.org/2000/svg','text');
+  rl.setAttribute('class','conv-lbl');rl.setAttribute('x',0);rl.setAttribute('y',-rMax-14);
+  rl.setAttribute('text-anchor','middle');rl.textContent='Convergence';ringsG.appendChild(rl);
+
+  // moon bodies (positioned each day at angle of current day on their ring)
+  var moonsG=app.querySelector('#oaMoons');
+  moons.forEach(function(m){
+    var hit=document.createElementNS('http://www.w3.org/2000/svg','circle');
+    hit.setAttribute('class','moon-hit');hit.setAttribute('r',16);
+    var body=document.createElementNS('http://www.w3.org/2000/svg','circle');
+    body.setAttribute('class','moon-body');body.setAttribute('fill',m.col);
+    body.style.color=m.col;
+    var gWrap=document.createElementNS('http://www.w3.org/2000/svg','g');
+    gWrap.setAttribute('class','moon-glyph');gWrap.style.color='#2a2418';
+    gWrap.innerHTML='<g transform="scale(0.16)"><g transform="translate(-32,-32)">'+m.glyph+'</g></g>';
+    m._body=body;m._hit=hit;m._glyphWrap=gWrap;
+    moonsG.appendChild(body);moonsG.appendChild(gWrap);moonsG.appendChild(hit);
+    function open(){showDetail(m);}
+    hit.addEventListener('click',open);body.addEventListener('click',open);
+  });
+
+  // daymark pointer (a hand on the dial pointing to current day, outer)
+  var dmG=app.querySelector('#oaDaymark');
+  var dm=document.createElementNS('http://www.w3.org/2000/svg','line');
+  dm.setAttribute('class','daymark');dmG.appendChild(dm);
+  var dmDot=document.createElementNS('http://www.w3.org/2000/svg','circle');
+  dmDot.setAttribute('class','daymark-dot');dmDot.setAttribute('r',3.5);dmG.appendChild(dmDot);
+
+  // DOM refs
+  var slider=app.querySelector('#oaSlider'),dayNum=app.querySelector('#oaDayNum');
+  var domEl=app.querySelector('#oaDom'),moEl=app.querySelector('#oaMo'),wdEl=app.querySelector('#oaWd');
+  var aloftEl=app.querySelector('#oaAloft'),eventSlot=app.querySelector('#oaEventSlot');
+  var detail=app.querySelector('#oaDetail');
+
+  function render(day){
+    // date
+    var mo=Math.floor(day/28),dom=day%28+1,wd=day%7;
+    domEl.textContent=dom;moEl.textContent=months[mo];wdEl.textContent=weekdays[wd];
+    dayNum.textContent='Day '+(day+1)+' / 364';
+    // daymark angle
+    var a=ang(day),R=rMax+22;
+    dm.setAttribute('x1',Math.cos(a)*40);dm.setAttribute('y1',Math.sin(a)*40);
+    dm.setAttribute('x2',Math.cos(a)*R);dm.setAttribute('y2',Math.sin(a)*R);
+    dmDot.setAttribute('cx',Math.cos(a)*R);dmDot.setAttribute('cy',Math.sin(a)*R);
+    // moons
+    var aloftList=[];
+    moons.forEach(function(m){
+      var up=isUp(m,day);
+      var mx=Math.cos(a)*m._r,my=Math.sin(a)*m._r;
+      m._body.setAttribute('cx',mx);m._body.setAttribute('cy',my);
+      m._body.setAttribute('r',up?(m.p>=182?9:m.p>=52?7.5:6):4.5);
+      m._body.setAttribute('class','moon-body '+(up?'aloft':'below'));
+      m._hit.setAttribute('cx',mx);m._hit.setAttribute('cy',my);
+      m._glyphWrap.setAttribute('transform','translate('+mx+','+my+')');
+      m._glyphWrap.setAttribute('class','moon-glyph '+(up?'':'below'));
+      m._glyphWrap.style.display=up?'':'none';
+      if(up)aloftList.push(m);
+    });
+    // aloft panel
+    aloftEl.innerHTML='';
+    if(aloftList.length===0){
+      aloftEl.innerHTML='<div class="oa-none">No moon stands in the sky.<br>The Vanishing.</div>';
+    } else {
+      aloftList.forEach(function(m){
+        var row=document.createElement('div');row.className='oa-aloft-row';
+        row.innerHTML='<svg viewBox="0 0 64 64" style="color:'+m.col+'">'+m.glyph+'</svg>'+
+          '<span class="oa-aloft-name">'+m.key+'</span>'+
+          '<span class="oa-aloft-god">'+m.god+'</span>';
+        row.addEventListener('click',function(){showDetail(m);});
+        aloftEl.appendChild(row);
+      });
+    }
+    // events — Convane is month index 12 (days 336..363).
+    // Vanishing = Convane 19,20,21 -> day indices 354,355,356 (moonless)
+    // Week of Tears (Serathis alone) = Convane 22..27 -> day indices 357..362
+    // Convocation = Convane 28 -> day index 363
+    eventSlot.innerHTML='';
+    var ev=null;
+    if(day===363)ev={c:'conv',t:'THE CONVOCATION \u2014 all seven moons aloft. The year turns at dawn.'};
+    else if(day>=354&&day<=356)ev={c:'vanish',t:'THE VANISHING \u2014 three moonless nights. Keep the hearth lit.'};
+    else if(day>=357&&day<=362)ev={c:'tears',t:'THE WEEK OF TEARS \u2014 Serathis alone; the continent mourns its dead.'};
+    if(ev){var e=document.createElement('div');e.className='oa-event '+ev.c;e.textContent=ev.t;eventSlot.appendChild(e);}
+  }
+
+  function showDetail(m){
+    app.querySelector('#oaDetailGlyph').innerHTML='<svg viewBox="0 0 64 64" style="color:'+m.col+'">'+m.glyph+'</svg>';
+    app.querySelector('#oaDetailName').textContent=m.key;
+    app.querySelector('#oaDetailGod').textContent='Moon of '+m.god;
+    app.querySelector('#oaDetailBody').innerHTML=
+      '<div class="oa-detail-stats">'+
+      '<div><b>'+m._turns+'</b> turns/year</div><div><b>'+m.p+'</b>-day circuit</div>'+
+      '<div><b>'+m._up+'</b> nights aloft</div><div><b>'+(YEAR-m._up)+'</b> below</div>'+
+      '<div>Up <b>'+m.up+'</b> / down <b>'+(m.p-m.up)+'</b></div><div>Lone watch: <b>'+m._solo+'</b> days</div>'+
+      '</div>'+m.desc;
+    detail.classList.add('show');
+  }
+  app.querySelector('#oaClose').addEventListener('click',function(){detail.classList.remove('show');});
+
+  // ticks
+  var ticksEl=app.querySelector('#oaTicks');
+  months.forEach(function(mn,i){
+    var t=document.createElement('div');t.className='oa-tick'+(i===12?' special':'');
+    t.textContent=mn.slice(0,4);
+    t.addEventListener('click',function(){slider.value=i*28;render(i*28);});
+    ticksEl.appendChild(t);
+  });
+
+  slider.addEventListener('input',function(){render(+slider.value);});
+
+  // play
+  var playing=false,timer=null;
+  var playBtn=app.querySelector('#oaPlay');
+  playBtn.addEventListener('click',function(){
+    playing=!playing;
+    playBtn.textContent=playing?'❚❚ Pause':'▶ Play';
+    if(playing){
+      timer=setInterval(function(){
+        var d=(+slider.value+1)%YEAR;slider.value=d;render(d);
+      },110);
+    } else clearInterval(timer);
+  });
+
+  render(0);
+})();
+</script>
+</div>
